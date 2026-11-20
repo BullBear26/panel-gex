@@ -11,16 +11,41 @@ aside{background:var(--pn);border-left:1px solid var(--ln);padding:14px;overflow
 #reg{font-size:22px;font-weight:700;margin:0 0 2px}.mu{color:var(--mu);font-size:12px}
 table{width:100%;border-collapse:collapse;margin:10px 0}td{padding:5px 0;border-bottom:1px solid var(--ln)}td:last-child{text-align:right;font-variant-numeric:tabular-nums}
 .up{color:var(--up)}.dn{color:var(--dn)}.fl{color:var(--fl)}#bars div{display:flex;height:9px;margin:3px 0;gap:1px;align-items:center}
+#help{position:fixed;inset:0;background:#000b;display:none;z-index:10;align-items:center;justify-content:center;padding:16px}
+#help.on{display:flex}#help .box{background:var(--pn);border:1px solid var(--ln);border-radius:8px;max-width:660px;max-height:88vh;overflow:auto;padding:18px 24px}
+#help h2{margin:0 0 4px;font-size:18px}#help h3{margin:16px 0 4px;font-size:14px}#help p,#help li{font-size:13.5px;margin:4px 0}#help ul{padding-left:18px;margin:4px 0}
+#help .x{float:right}#help .ok{border:1px solid var(--ln);border-radius:6px;padding:8px 12px;margin-top:12px;color:var(--mu)}
 @media(max-width:800px){body{grid-template-columns:1fr;grid-template-rows:60vh auto;height:auto}}
 </style></head><body>
 <div id="main"><div id="bar"><b id="sym">SPX</b>
 <button data-s="SPX" class="on">SPX</button><button data-s="SPY">SPY</button>
-<span class="mu">Temporalidad</span><button data-t="1m" class="on">1m</button><button data-t="5m">5m</button><button data-t="15m">15m</button><button data-t="30m">30m</button><button data-t="1h">1h</button><button data-t="1D">D</button><span class="mu" style="margin-left:10px">Vencimiento</span><button data-m="0dte" class="on">0DTE</button><button data-m="7d">7D</button></div><div id="chart"></div></div>
+<span class="mu">Temporalidad</span><button data-t="1m" class="on">1m</button><button data-t="5m">5m</button><button data-t="15m">15m</button><button data-t="30m">30m</button><button data-t="1h">1h</button><button data-t="1D">D</button><span class="mu" style="margin-left:10px">Vencimiento</span><button data-m="0dte" class="on">0DTE</button><button data-m="7d">7D</button><button id="hb" style="margin-left:auto">? Guía</button></div><div id="chart"></div></div>
 <aside><p id="reg">…</p><div class="mu" id="sub">Cargando datos</div>
 <table id="tb"></table><div class="mu">GEX neto por strike (cerca del precio)</div><div id="bars"></div>
 <p class="mu" id="foot"></p><p class="mu">Solo informativo. Estimación basada en datos públicos con retraso; no es consejo financiero.</p></aside>
+<div id="help"><div class="box"><button class="x" id="hx">Cerrar</button><h2>Cómo leer el panel</h2>
+<p class="mu">Guía rápida para interpretar los niveles de gamma de SPX y SPY.</p>
+<h3>1. Régimen de gamma (el titular del panel)</h3><ul>
+<li><b class="up">Gamma positiva</b>: el precio está por encima del gamma flip. Los dealers tienden a comprar cuando baja y vender cuando sube, así que los movimientos se amortiguan. Suele haber rangos y reversión a la media.</li>
+<li><b class="dn">Gamma negativa</b>: el precio está por debajo del gamma flip. Los dealers tienden a vender cuando baja y comprar cuando sube, y los movimientos se amplifican. Suele haber más volatilidad y tendencias más fuertes.</li></ul>
+<h3>2. Niveles en la gráfica</h3><ul>
+<li><b class="up">Call wall</b> (línea verde): el strike por encima del precio con más gamma de calls. Suele actuar como techo o resistencia.</li>
+<li><b class="dn">Put wall</b> (línea roja): el strike por debajo del precio con más gamma de puts. Suele actuar como piso o soporte.</li>
+<li><b class="fl">Gamma flip</b> (línea ámbar): el precio donde el GEX neto cambia de signo y cambia el régimen. Si dice "—", no hay cruce dentro de ±7.5% del precio.</li>
+<li><b style="color:#5aa9ff">OI call</b> (azul) y <b style="color:#c18cff">OI put</b> (morado): los 3 strikes con más open interest de cada lado. Son niveles donde hay mucha posición abierta y el precio suele reaccionar. Si una línea no se ve, está fuera del rango de la gráfica: aleja el zoom.</li></ul>
+<h3>3. Panel de la derecha</h3><ul>
+<li><b>GEX total</b>: gamma neta de los dealers, en miles de millones de dólares por cada 1% de movimiento. Positivo = estabilizador, negativo = amplificador.</li>
+<li><b>Barras por strike</b>: verde a la derecha son calls, rojo a la izquierda son puts. Las barras largas marcan los strikes con más peso.</li></ul>
+<h3>4. Botones</h3><ul>
+<li><b>0DTE</b>: solo opciones que vencen hoy. Es lo que más mueve el precio dentro del día y cambia rápido.</li>
+<li><b>7D</b>: todas las que vencen en los próximos 7 días. Muestra niveles más estables, útiles como contexto de la semana.</li>
+<li><b>Temporalidad</b> (1m a D) solo cambia las velas; los niveles de gamma no cambian.</li></ul>
+<h3>5. Ejemplo de lectura</h3>
+<p>Precio entre el put wall y el call wall, con gamma positiva: se espera un rango entre los dos niveles. Precio rompiendo el put wall con gamma negativa: el movimiento puede acelerarse hacia abajo.</p>
+<div class="ok"><b>Importante:</b> es una estimación. Asume que los dealers están largos en calls y cortos en puts, el open interest se actualiza una vez al día, y los datos de CBOE tienen unos 15 minutos de retraso. Fuera del horario de mercado, 0DTE muestra los contratos de hoy ya vencidos. Úsalo como contexto, no como señal de compra o venta. Solo informativo; no es consejo financiero.</div></div></div>
 <script>
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js');
+const hp=document.getElementById('help');document.getElementById('hb').onclick=()=>hp.classList.add('on');hp.onclick=e=>{if(e.target==hp||e.target.id=='hx')hp.classList.remove('on')};document.addEventListener('keydown',e=>{if(e.key==='Escape')hp.classList.remove('on')});
 let S="SPX",M="0dte",T="1m",lines=[];
 const ch=LightweightCharts.createChart(document.getElementById('chart'),{layout:{background:{color:'#10141a'},textColor:'#7d8798'},
 grid:{vertLines:{color:'#1b222d'},horzLines:{color:'#1b222d'}},timeScale:{timeVisible:true,secondsVisible:false},rightPriceScale:{borderColor:'#263040'}});
