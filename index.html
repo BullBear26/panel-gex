@@ -1,5 +1,6 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><title>Panel GEX</title><link rel="manifest" href="/manifest.json"><link rel="icon" href="/icon.svg"><meta name="theme-color" content="#10141a">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <style>
 :root{--bg:#10141a;--pn:#171d26;--ln:#263040;--tx:#d5dbe5;--mu:#7d8798;--up:#2fbf8a;--dn:#e5575f;--fl:#e8b64a}
@@ -16,11 +17,17 @@ table{width:100%;border-collapse:collapse;margin:10px 0}td{padding:5px 0;border-
 #help h2{margin:0 0 4px;font-size:18px}#help h3{margin:16px 0 4px;font-size:14px}#help p,#help li{font-size:13.5px;margin:4px 0}#help ul{padding-left:18px;margin:4px 0}
 #help .x{float:right}#help .ok{border:1px solid var(--ln);border-radius:6px;padding:8px 12px;margin-top:12px;color:var(--mu)}
 #wm{position:absolute;left:12px;bottom:34px;font-size:11px;color:var(--mu);opacity:.4;pointer-events:none;user-select:none;z-index:2}
+#mk{border-bottom:1px solid var(--ln)}#ix{display:flex;gap:8px;padding:8px 14px;overflow-x:auto}
+.cd{flex:1;min-width:170px;background:var(--pn);border:1px solid var(--ln);border-radius:8px;padding:6px 8px}
+.cd .h{display:flex;justify-content:space-between;font-size:12px;font-weight:600}.cd .mc{height:58px;margin-top:2px}.cd .px{font-size:11px;color:var(--mu)}
+#hm{position:relative;height:300px;margin:0 14px 8px;background:#0c1016;border-radius:6px;overflow:hidden;display:none}#hm.on{display:block}
+#hm .t{position:absolute;box-sizing:border-box;overflow:hidden;color:#fff;line-height:1.15;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border:1px solid #0c1016}
+#hm .s{position:absolute;color:#aab3c2;font-size:10px;padding:1px 4px;pointer-events:none;z-index:2;white-space:nowrap}#mkn{font-size:11px;padding:0 14px 6px}
 @media(max-width:800px){body{grid-template-columns:1fr;grid-template-rows:60vh auto;height:auto}}
 </style></head><body>
 <div id="main"><div id="bar"><b id="sym">SPX</b>
 <button data-s="SPX" class="on">SPX</button><button data-s="SPY">SPY</button>
-<span class="mu">Temporalidad</span><button data-t="1m" class="on">1m</button><button data-t="5m">5m</button><button data-t="15m">15m</button><button data-t="30m">30m</button><button data-t="1h">1h</button><button data-t="1D">D</button><span class="mu" style="margin-left:10px">Vencimiento</span><button data-m="0dte" class="on">0DTE</button><button data-m="7d">7D</button><button id="hb" style="margin-left:auto">? Guía</button></div><div id="chart"></div><div id="wm">Desarrollado por Darian G.</div></div>
+<span class="mu">Temporalidad</span><button data-t="1m" class="on">1m</button><button data-t="5m">5m</button><button data-t="15m">15m</button><button data-t="30m">30m</button><button data-t="1h">1h</button><button data-t="1D">D</button><span class="mu" style="margin-left:10px">Vencimiento</span><button data-m="0dte" class="on">0DTE</button><button data-m="7d">7D</button><button id="hmb" style="margin-left:auto">Mapa de calor</button><button id="hb">? Guía</button></div><div id="mk"><div id="ix"></div><div id="hm"></div><div id="mkn" class="mu"></div></div><div id="chart"></div><div id="wm">Desarrollado por Darian G.</div></div>
 <aside><p id="reg">…</p><div class="mu" id="sub">Cargando datos</div>
 <table id="tb"></table><div class="mu">GEX neto por strike (cerca del precio)</div><div id="bars"></div>
 <p class="mu" id="foot"></p><p class="mu">Solo informativo. Estimación basada en datos públicos con retraso; no es consejo financiero.</p></aside>
@@ -80,4 +87,33 @@ document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{S=b.dataset.s;do
 document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{T=b.dataset.t;document.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('on',x==b));loadCandles(true)});
 document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{M=b.dataset.m;document.querySelectorAll('[data-m]').forEach(x=>x.classList.toggle('on',x==b));loadLevels()});
 loadCandles(true);loadLevels();setInterval(loadCandles,15000);setInterval(loadLevels,30000);
+
+// ---- Mercado: índices + mapa de calor ----
+let MK=null,cards={};const pc=p=>p>=0?'#2fbf8a':'#e5575f';
+const hcol=d3.scaleLinear().domain([-3,0,3]).range(['#c9444b','#2c313c','#2a9d6b']).clamp(true);
+function drawIdx(idx){const box=document.getElementById('ix');
+ idx.forEach(d=>{let c=cards[d.sym];
+  if(!c){const el=document.createElement('div');el.className='cd';el.innerHTML='<div class="h"><span></span><span class="v"></span></div><div class="px"></div><div class="mc"></div>';box.appendChild(el);
+   const chh=LightweightCharts.createChart(el.querySelector('.mc'),{autoSize:true,layout:{background:{color:'transparent'},textColor:'#7d8798'},grid:{vertLines:{visible:false},horzLines:{visible:false}},rightPriceScale:{visible:false},leftPriceScale:{visible:false},timeScale:{visible:false,borderVisible:false},handleScroll:false,handleScale:false,crosshair:{vertLine:{visible:false},horzLine:{visible:false}}});
+   const sr=chh.addCandlestickSeries({upColor:'#2fbf8a',downColor:'#e5575f',borderVisible:false,wickUpColor:'#2fbf8a',wickDownColor:'#e5575f',lastValueVisible:false,priceLineVisible:false});
+   c=cards[d.sym]={el,sr,chh,pl:null};}
+  c.el.querySelector('span').textContent=d.name;const v=c.el.querySelector('.v');v.textContent=(d.pct>=0?'+':'')+d.pct.toFixed(2)+'%';v.style.color=pc(d.pct);
+  c.el.querySelector('.px').textContent=f(d.price,2)+'  ('+(d.chg>=0?'+':'')+f(d.chg,2)+')';
+  c.sr.setData(d.candles);if(c.pl)c.sr.removePriceLine(c.pl);c.pl=c.sr.createPriceLine({price:d.prev,color:'#e5575f',lineWidth:1,lineStyle:2,axisLabelVisible:false});c.chh.timeScale().fitContent();});}
+function drawHeat(){const hm=document.getElementById('hm');if(!MK||!hm.classList.contains('on'))return;
+ const W=hm.clientWidth,H=hm.clientHeight,by={};MK.stk.forEach(x=>(by[x.s]=by[x.s]||[]).push(x));
+ const root=d3.hierarchy({children:Object.entries(by).map(([k,v])=>({name:k,children:v}))}).sum(d=>d.cap||0).sort((a,b)=>b.value-a.value);
+ d3.treemap().size([W,H]).paddingInner(1).paddingTop(d=>d.depth===1?13:0)(root);let h='';
+ root.children.forEach(n=>{h+=`<div class="s" style="left:${n.x0}px;top:${n.y0}px">${n.data.name}</div>`;
+  n.children.forEach(l=>{const d=l.data,w=l.x1-l.x0,hh=l.y1-l.y0,fs=Math.max(9,Math.min(22,Math.sqrt(w*hh)/5));
+   const t=w>=30&&hh>=20?`<b style="font-size:${fs}px">${d.t}</b>`+(w>=46&&hh>=34?`<span style="font-size:${Math.max(9,fs*.7)}px">${d.pct>=0?'+':''}${d.pct.toFixed(2)}%</span>`:''):'';
+   h+=`<div class="t" title="${d.t}  ${d.pct>=0?'+':''}${d.pct.toFixed(2)}%  $${f(d.price,2)}" style="left:${l.x0}px;top:${l.y0}px;width:${w}px;height:${hh}px;background:${hcol(d.pct)}">${t}</div>`;});});
+ hm.innerHTML=h;}
+async function loadMarket(){if(document.hidden)return;try{const r=await fetch('/api/data?kind=market&v=1');const d=await r.json();if(d.error)throw new Error(d.error);MK=d;drawIdx(d.idx);drawHeat();
+ document.getElementById('mkn').textContent=`Mercado actualizado ${new Date(d.asof).toLocaleTimeString()} · ${d.ok}/${d.n} acciones · tamaños aproximados por capitalización`;}
+ catch(e){document.getElementById('mkn').textContent='Mercado: '+e.message}}
+document.getElementById('hmb').onclick=function(){const hm=document.getElementById('hm');hm.classList.toggle('on');this.classList.toggle('on',hm.classList.contains('on'));drawHeat()};
+if(innerHeight>=900){document.getElementById('hm').classList.add('on');document.getElementById('hmb').classList.add('on')}
+new ResizeObserver(()=>drawHeat()).observe(document.getElementById('hm'));
+loadMarket();setInterval(loadMarket,30000);
 </script></body></html>
