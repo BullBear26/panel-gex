@@ -26,7 +26,11 @@ def get(url, ttl):
     hit = _cache.get(url)
     if hit and time.time() - hit[0] < ttl:
         return hit[1]
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    h = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+         "Accept": "application/json,text/plain,*/*", "Accept-Language": "en-US,en;q=0.9"}
+    if "cboe.com" in url:
+        h.update({"Referer": "https://www.cboe.com/", "Origin": "https://www.cboe.com"})
+    req = urllib.request.Request(url, headers=h)
     data = json.load(urllib.request.urlopen(req, timeout=15))
     _cache[url] = (time.time(), data)
     return data
