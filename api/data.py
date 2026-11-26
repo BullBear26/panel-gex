@@ -7,7 +7,7 @@ import json, math, os, re, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, parse_qs, urlencode
+from urllib.parse import urlparse, parse_qs
 
 
 def ny_now():
@@ -336,15 +336,6 @@ class handler(H):
     CC = "public, s-maxage=15, stale-while-revalidate=30"
     def do_GET(self):
         u = urlparse(self.path); q = parse_qs(u.query); kind = q.get("kind", ["levels"])[0]
-        # Schwab vuelve aquí tras el login (callback de la app). Si el regreso es
-        # para "mi-plataforma" (state empieza por "mip_"), se reenvía tal cual.
-        st = q.get("state", [""])[0]
-        if st.startswith("mip_") and ("code" in q or "error" in q):
-            keep = {k: q[k][0] for k in ("code", "session", "state", "error") if k in q}
-            dest = os.environ.get("SCHWAB_FORWARD_URL", "https://mi-plataforma-five-kappa.vercel.app/api/schwab/callback")
-            self.send_response(302); self.send_header("Location", dest + "?" + urlencode(keep))
-            self.send_header("Cache-Control", "no-store"); self.send_header("Content-Length", "0")
-            self.end_headers(); return
         if kind == "market": self.CC = "public, s-maxage=30, stale-while-revalidate=60"
         self.path = "/api/" + kind + "?" + u.query
         super().do_GET()
